@@ -38,43 +38,59 @@ func getLinesAsInts(line string) []int {
 	return numbers
 }
 
-func firstPart(lines []string) int {
-	safeCount := 0
+// Check for an int array if everything is going straight down or up without an error.
+// Second param is for ignoring a specific index.
+func checkLine(numbers []int, ignoredIndex int) bool {
 	prev := -1
-	increasing := false
+	increasing := 0
 
-	for _, line := range lines {
-		numbers := getLinesAsInts(line)
-
-		// Skip invalid lines
-		if len(numbers) < 4 || numbers[0] == numbers[4] {
+	for i, n := range numbers {
+		// If ignoredIndex = -1 we ignore nothing, else we skip.
+		if ignoredIndex >= 0 && i == ignoredIndex {
 			continue
 		}
 
-		increasing = numbers[0]-numbers[4] < 0
-
-		for i, n := range numbers {
-			if i == 0 {
-				prev = n
-				continue
-			}
-
-			if increasing && n <= prev || n > prev+3 {
-				prev = -1
-				break
-			} else if !increasing && n >= prev || n < prev-3 {
-				prev = -1
-				break
-			}
-
+		// First actual value, cannot compare to store and go next.
+		if prev == -1 {
 			prev = n
+			continue
 		}
 
-		if prev != -1 {
+		// All error cases.
+		if n == prev ||
+			n > prev+3 ||
+			n < prev-3 ||
+			n > prev && increasing < 0 ||
+			n < prev && increasing > 0 {
+			return false
+		}
+
+		// Pfew, no errors. Checking out if we're going up or down with this array.
+		if n > prev {
+			increasing = 1
+		} else {
+			increasing = -1
+		}
+
+		prev = n
+	}
+
+	return true
+
+}
+
+func firstPart(lines []string) int {
+	safeCount := 0
+
+	// Go through each line and check for all valid ones.
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		if checkLine(getLinesAsInts(line), -1) {
 			safeCount++
 		}
-
-		prev = -1
 	}
 
 	return safeCount
@@ -82,80 +98,35 @@ func firstPart(lines []string) int {
 
 func secondPart(lines []string) int {
 	safeCount := 0
-	prev := -1
-	incErrs := 0
-	increasing := 0
-	decErrs := 0
-	countInc := 0
-	countDec := 0
+	failed := false
 
+	// Go through each line and check for there's a version for each where by removing a value we are valid.
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 
 		numbers := getLinesAsInts(line)
-		// fmt.Println("Now it's ", numbers)
 
-		for i, n := range numbers {
-			if i == 0 {
-				prev = n
-				continue
+		// First check: No ignored value.
+		failed = !checkLine(numbers, -1)
+
+		// If full line is wrong, ignore each value one by one to check if it can be valid.
+		if failed {
+			// Going through each array value and checking the line without it.
+			for i := range numbers {
+				failed = !checkLine(numbers, i)
+
+				if !failed {
+					break
+				}
 			}
-
-			// fmt.Printf("v: %v ; prev: %v; inc %v\n", n, prev, increasing)
-
-			if n == prev {
-				decErrs++
-				incErrs++
-			} else if n < prev-3 {
-				decErrs++
-			} else if n < prev && increasing == 1 {
-				incErrs++
-			} else if n > prev+3 {
-				incErrs++
-			} else if n > prev && increasing == -1 {
-				decErrs++
-			}
-
-			// fmt.Printf("was %v (%v > %v+3 with %v)\n", incErrs, n, prev, increasing)
-			if n > prev {
-				increasing = 1
-			} else {
-				increasing = -1
-			}
-
-			// Increasing count of processed elements. Equalities count as both.
-			if increasing == 0 {
-				countInc++
-				countDec++
-			} else if increasing > 0 {
-				countInc++
-			} else {
-				countDec++
-			}
-
-			// fmt.Println("current errors ", incErrs)
-			prev = n
 		}
 
-		// If increase errors safe and moving up OR decrease errors safe and moving down.
-		if incErrs < 2 && decErrs < 2 { //&& countInc > countDec || decErrs < 2 && countInc < countDec {
+		// If it didn't fail with at least a combination, we can call that a success I guess.
+		if !failed {
 			safeCount++
 		}
-
-		fmt.Print(line, " - ", incErrs, decErrs, " / ", countInc, countDec)
-		if incErrs < 2 && decErrs < 2 { //&& countInc > countDec || decErrs < 2 && countInc < countDec {
-			fmt.Println(" (count)")
-		} else {
-			fmt.Println(" (NOT)")
-		}
-
-		incErrs = 0
-		decErrs = 0
-		countInc = 0
-		countDec = 0
-		increasing = 0
 	}
 
 	return safeCount
@@ -166,11 +137,6 @@ func main() {
 
 	start := time.Now()
 	fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
-
-	// Not 765
-	// Not 571
-	// Not 557
-	// Try 566
 	start = time.Now()
 	fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
 }
