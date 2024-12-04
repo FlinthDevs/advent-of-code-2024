@@ -24,7 +24,39 @@ func getLines(filename string) []string {
 	return strings.Split(string(data), "\n")
 }
 
-func firstPart(lines []string) int {
+func secondPart(lines []string) int {
+	xmasCount := 0
+	linesCount := len(lines)
+	lineLength := 0
+
+	for n, line := range lines {
+		if line == "" || n < 1 || n > linesCount-3 {
+			continue
+		}
+
+		lineLength = len(line)
+
+		for i, c := range line {
+			if c != 'A' || i < 1 || i > lineLength-2 {
+				continue
+			}
+
+			topLeft := lines[n-1][i-1]
+			topRight := lines[n-1][i+1]
+			bottomLeft := lines[n+1][i-1]
+			bottomRight := lines[n+1][i+1]
+
+			if (topLeft == 'S' && bottomRight == 'M' || topLeft == 'M' && bottomRight == 'S') &&
+				(topRight == 'S' && bottomLeft == 'M' || topRight == 'M' && bottomLeft == 'S') {
+				xmasCount++
+			}
+		}
+	}
+
+	return xmasCount
+}
+
+func firstPart(lines []string, debug bool) int {
 	xmasCount := 0
 	linesCount := len(lines)
 	lineLength := 0
@@ -40,14 +72,20 @@ func firstPart(lines []string) int {
 	}
 
 	for n, line := range lines {
+		if line == "" {
+			continue
+		}
+
 		lineLength = len(line)
 
 		for i, c := range line {
+			// Not intersting, skip
 			if c != 'X' {
 				continue
 			}
 
-			if i < lineLength-4 {
+			if i < lineLength-3 {
+				// Right
 				if line[i+1] == 'M' && line[i+2] == 'A' && line[i+3] == 'S' {
 					xmasCount++
 					niceLines[n][i].valid = true
@@ -56,6 +94,7 @@ func firstPart(lines []string) int {
 					niceLines[n][i+3].valid = true
 				}
 
+				// Bottom Right
 				if n < linesCount-4 {
 					if lines[n+1][i+1] == 'M' && lines[n+2][i+2] == 'A' && lines[n+3][i+3] == 'S' {
 						xmasCount++
@@ -66,6 +105,7 @@ func firstPart(lines []string) int {
 					}
 				}
 
+				// Top right
 				if n > 2 {
 					if lines[n-1][i+1] == 'M' && lines[n-2][i+2] == 'A' && lines[n-3][i+3] == 'S' {
 						xmasCount++
@@ -78,6 +118,7 @@ func firstPart(lines []string) int {
 			}
 
 			if i > 2 {
+				// Left
 				if line[i-1] == 'M' && line[i-2] == 'A' && line[i-3] == 'S' {
 					xmasCount++
 					niceLines[n][i].valid = true
@@ -86,6 +127,7 @@ func firstPart(lines []string) int {
 					niceLines[n][i-3].valid = true
 				}
 
+				// Bottom Left
 				if n < linesCount-4 {
 					if lines[n+1][i-1] == 'M' && lines[n+2][i-2] == 'A' && lines[n+3][i-3] == 'S' {
 						xmasCount++
@@ -96,6 +138,7 @@ func firstPart(lines []string) int {
 					}
 				}
 
+				// Top Left
 				if n > 2 {
 					if lines[n-1][i-1] == 'M' && lines[n-2][i-2] == 'A' && lines[n-3][i-3] == 'S' {
 						xmasCount++
@@ -107,6 +150,7 @@ func firstPart(lines []string) int {
 				}
 			}
 
+			// Bottom
 			if n < linesCount-4 {
 				if lines[n+1][i] == 'M' && lines[n+2][i] == 'A' && lines[n+3][i] == 'S' {
 					xmasCount++
@@ -117,6 +161,7 @@ func firstPart(lines []string) int {
 				}
 			}
 
+			// Top
 			if n > 2 {
 				if lines[n-1][i] == 'M' && lines[n-2][i] == 'A' && lines[n-3][i] == 'S' {
 					xmasCount++
@@ -129,29 +174,27 @@ func firstPart(lines []string) int {
 		}
 	}
 
-	for _, l := range niceLines {
-		for _, c := range l {
-			if c.valid {
-				fmt.Printf("%s", c.value)
-			} else {
-				fmt.Printf(".")
+	if debug {
+		for _, l := range niceLines {
+			for _, c := range l {
+				if c.valid {
+					fmt.Printf("%s", c.value)
+				} else {
+					fmt.Printf(".")
+				}
 			}
+			fmt.Println()
 		}
-		fmt.Println()
 	}
 
 	return xmasCount
 }
 
-func secondPart() int {
-	return 0
-}
-
 func main() {
-	// Not 2334 2324?
-	lines := getLines("./test_input_2.txt")
+	debug := false
+	lines := getLines("./input.txt")
 	start := time.Now()
-	fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
+	fmt.Printf("First part result: %v (%v)\n", firstPart(lines, debug), time.Since(start))
 	start = time.Now()
-	fmt.Printf("Second part result: %v (%v)\n", secondPart(), time.Since(start))
+	fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
 }
