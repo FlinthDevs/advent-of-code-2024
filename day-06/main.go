@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const debugEnabled = true
+const debugEnabled = false
 
 type Direction int
 
@@ -31,86 +31,7 @@ func getLines(filename string) []string {
 }
 
 func secondPart(lines []string) int {
-	position := [3]int{-1, -1, -1}
-	direction := Up
-	width := -1
-	height := len(lines)
-
-	for y, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		if width == -1 {
-			width = len(line)
-		}
-
-		for x, c := range line {
-			if c == '^' {
-				position[0] = x
-				position[1] = y
-				position[2] = int(Up)
-				break
-			}
-		}
-
-		if position[0] != -1 {
-			break
-		}
-	}
-
-	places := make([][3]int, 0, width*height)
-	startingPosition := position
-	startingDirection := direction
-
-	debug("Starting at %v:%v\n", position[0], position[1])
-
-	// Get all places we go through.
-	for {
-		updatePosition(lines, &position, &direction, &places, width, height, false)
-
-		if position[0] == -1 {
-			break
-		}
-	}
-
-	loopsCount := 0
-	for _, coords := range places {
-		if lines[coords[0]][coords[1]] == '#' {
-			continue
-		}
-
-		position = startingPosition
-		direction = startingDirection
-		newPlaces := make([][3]int, 0, width*height)
-
-		debug("===========================\n")
-		debug("Added trap at %v\n", coords)
-		debug("===========================\n")
-		placeTrap(&lines, coords, '#')
-
-		hasLoop := false
-
-		for {
-			hasLoop := updatePosition(lines, &position, &direction, &newPlaces, width, height, true)
-
-			if position[0] == -1 || hasLoop {
-				debug("%v: %v\n", position, hasLoop)
-				break
-			}
-		}
-
-		if hasLoop {
-			debug(" LOOOOOOOOOOOOP FOUND")
-			loopsCount++
-		} else {
-			debug("    NO LOOP FOUND\n")
-		}
-
-		placeTrap(&lines, coords, '.')
-	}
-
-	return loopsCount
+	return 0
 }
 
 func placeTrap(lines *[]string, coords [3]int, trap rune) {
@@ -120,15 +41,18 @@ func placeTrap(lines *[]string, coords [3]int, trap rune) {
 }
 
 func firstPart(lines []string) int {
-	position := [3]int{-1, -1, -1}
+	position := [2]int{-1, -1}
 	direction := Up
 	width := -1
 	height := len(lines)
+	histories := make([][][]rune, 0, len(lines))
 
 	for y, line := range lines {
 		if line == "" {
 			continue
 		}
+
+		histories = append(histories, make([][]rune, len(line)))
 
 		if width == -1 {
 			width = len(line)
@@ -138,31 +62,44 @@ func firstPart(lines []string) int {
 			if c == '^' {
 				position[0] = x
 				position[1] = y
-				position[2] = int(Up)
-				break
 			}
-		}
 
-		if position[0] != -1 {
-			break
+			histories[y][x] = make([]rune, 0, 10)
+			histories[y][x] = append(histories[y][x], c)
 		}
 	}
 
-	places := make([][3]int, 0, width*height)
-
 	debug("Starting at %v:%v\n", position[0], position[1])
 	for {
-		updatePosition(lines, &position, &direction, &places, width, height, false)
+		updatePosition(&histories, &position, &direction, width, height)
 
 		if position[0] == -1 {
 			break
 		}
 	}
 
-	return len(places)
+	count := 0
+
+	for _, l := range histories {
+		debug("%c\n", l)
+		for _, c := range l {
+			found := false
+			for _, r := range c {
+				if r != '#' && r != '.' {
+					found = true
+				}
+			}
+			if found {
+				count++
+			}
+		}
+
+	}
+
+	return count
 }
 
-func updatePosition(lines []string, pos *[3]int, d *Direction, places *[][3]int, w int, h int, handleLoop bool) bool {
+func updatePosition(lines *[][][]rune, pos *[2]int, d *Direction, w int, h int) {
 	nextPosition := *pos
 	prevPosition := *pos
 	xFactor := 0
@@ -187,51 +124,60 @@ func updatePosition(lines []string, pos *[3]int, d *Direction, places *[][3]int,
 		nextPosition[1] += yFactor
 		debug("Direction: %v - New coords: %v\n", []int{xFactor, yFactor}, nextPosition)
 
-		if nextPosition[0] > w-1 || nextPosition[0] < 0 || nextPosition[1] > h-1 || nextPosition[1] < 0 || lines[nextPosition[1]] == "" {
+		// Ouf of bounds
+		if nextPosition[0] > w-1 ||
+			nextPosition[0] < 0 ||
+			nextPosition[1] > h-1 ||
+			nextPosition[1] < 0 ||
+			nextPosition[1] > len(*lines)-1 ||
+			nextPosition[0] > len((*lines)[0])-1 {
 			debug("BREAK\n")
-			*pos = [3]int{-1, -1, -1}
+			(*pos)[0] = -1
+			(*pos)[1] = -1
 			*d = Up
-			return false
+			return
 		}
 
-		if lines[nextPosition[1]][nextPosition[0]] == '#' {
+		if (*lines)[nextPosition[1]][nextPosition[0]][0] == '#' {
 			debug("STOP - Obstacle met at %v:%v\n", nextPosition[0], nextPosition[1])
 			*pos = prevPosition
 			turnRight(d)
-			return false
+			(*lines)[prevPosition[1]][prevPosition[0]] = append((*lines)[prevPosition[1]][prevPosition[0]], getTurnChar(*d))
+			return
 		}
 
-		hasLoop := addPlace(places, nextPosition, handleLoop)
-
-		if handleLoop && hasLoop {
-			return true
-		}
-
+		(*lines)[nextPosition[1]][nextPosition[0]] = append((*lines)[nextPosition[1]][nextPosition[0]], getTurnChar(*d))
 		prevPosition = nextPosition
 	}
 }
 
-func addPlace(places *[][3]int, newCoords [3]int, loopDetection bool) bool {
-	found := false
-
-	for _, coords := range *places {
-		if coords[0] == newCoords[0] && coords[1] == newCoords[1] {
-			if !loopDetection || coords[2] == newCoords[2] {
-				debug("existing step step %v (%v)\n", newCoords, len(*places))
-				found = true
-			} else {
-				debug("Found A loop !!!!")
-				return true
-			}
-		}
+func getTurnChar(d Direction) rune {
+	switch d {
+	case Up:
+		return 'N'
+	case Right:
+		return 'E'
+	case Down:
+		return 'S'
+	case Left:
+		return 'W'
 	}
 
-	if !found {
-		debug("add new step %v (%v)\n", newCoords, len(*places))
-		*places = append(*places, newCoords)
+	return 'O'
+}
+func getDirectionChar(d Direction) rune {
+	switch d {
+	case Up:
+		return 'U'
+	case Right:
+		return 'R'
+	case Down:
+		return 'D'
+	case Left:
+		return 'L'
 	}
 
-	return false
+	return 'O'
 }
 
 func debug(format string, a ...any) {
@@ -246,7 +192,7 @@ func turnRight(d *Direction) {
 }
 
 func main() {
-	lines := getLines("./test_input.txt")
+	lines := getLines("./input.txt")
 	start := time.Now()
 	fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
 	start = time.Now()
