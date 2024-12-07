@@ -248,7 +248,7 @@ func turnRight(d *Direction) {
 func main() {
 	lines := getLines("./test_input.txt")
 	start := time.Now()
-	// fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
+	fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
 	start = time.Now()
-	fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
+	// fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
 }
