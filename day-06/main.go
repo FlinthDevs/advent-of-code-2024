@@ -31,13 +31,86 @@ func getLines(filename string) []string {
 }
 
 func secondPart(lines []string) int {
-	return 0
-}
+	position := [2]int{-1, -1}
+	direction := Up
+	width := -1
+	height := len(lines)
+	histories := make([][][]rune, 0, len(lines))
 
-func placeTrap(lines *[]string, coords [3]int, trap rune) {
-	lineChars := []rune((*lines)[coords[0]])
-	lineChars[coords[1]] = trap
-	(*lines)[coords[0]] = string(lineChars)
+	for y, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		histories = append(histories, make([][]rune, len(line)))
+
+		if width == -1 {
+			width = len(line)
+		}
+
+		for x, c := range line {
+			if c == '^' {
+				position[0] = x
+				position[1] = y
+			}
+
+			histories[y][x] = make([]rune, 0, 10)
+			histories[y][x] = append(histories[y][x], c)
+		}
+	}
+
+	debug("Starting at %v:%v\n", position[0], position[1])
+	for {
+		updatePosition(&histories, &position, &direction, width, height)
+
+		if position[0] == -1 {
+			break
+		}
+	}
+
+	count := 0
+
+	for l, line := range histories {
+		for n, chars := range line {
+			for _, c := range chars {
+				if c == 'N' && l < len(histories)-1 {
+					for i := n; i < len(chars); i++ {
+						for _, r := range lines[i] {
+							if r == 'D' {
+								count++
+							}
+						}
+					}
+				} else if c == 'S' && l > 0 {
+					for i := n; i > 0; i-- {
+						for _, r := range line[i] {
+							if r == 'U' {
+								count++
+							}
+						}
+					}
+				} else if c == 'W' && n < len(line)-1 {
+					for i := n; i < len(line); i++ {
+						for _, r := range histories[i][n] {
+							if r == 'R' {
+								count++
+							}
+						}
+					}
+				} else if c == 'E' && n > 0 {
+					for i := n; i > 0; i-- {
+						for _, r := range histories[i][n] {
+							if r == 'L' {
+								count++
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return count
 }
 
 func firstPart(lines []string) int {
@@ -192,9 +265,9 @@ func turnRight(d *Direction) {
 }
 
 func main() {
-	lines := getLines("./input.txt")
+	lines := getLines("./test_input.txt")
 	start := time.Now()
-	fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
+	// fmt.Printf("First part result: %v (%v)\n", firstPart(lines), time.Since(start))
 	start = time.Now()
-	// fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
+	fmt.Printf("Second part result: %v (%v)\n", secondPart(lines), time.Since(start))
 }
